@@ -67,7 +67,7 @@ export const Sidebar = ({ id }) => {
         <div className="modal-box">
           <button className="ml-auto" onClick={handleClose}>X</button>
           {activeTab === CONVERSATIONS_KEY ? (
-            <NewConversationModal />
+            <NewConversationModal handleClose={handleClose}/>
           ) : (
             <NewContactModal handleClose={handleClose} />
           )}

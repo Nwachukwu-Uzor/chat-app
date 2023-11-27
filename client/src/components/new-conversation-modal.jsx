@@ -4,11 +4,11 @@ import { useContactsContext, useConversationContext } from "../context";
 export const NewConversationModal = ({ handleClose }) => {
   const [selectedContacts, setSelectedContact] = useState([]);
   const { contacts } = useContactsContext();
-  const { createNewConversation} = useConversationContext()
+  const { createNewConversation } = useConversationContext();
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    createNewConversation(selectedContacts)
+    createNewConversation(selectedContacts);
     handleClose();
   };
 
