@@ -10,7 +10,7 @@ const App = () => {
 
   const dashboard = (
     <ContactsContextProvider>
-      <ConversationContextProvider>
+      <ConversationContextProvider id={id}>
         <Dashboard id={id} />
       </ConversationContextProvider>
     </ContactsContextProvider>
