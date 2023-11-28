@@ -1,6 +1,12 @@
-import { createContext, useContext, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+} from "react";
 import { useLocalStorage } from "../hooks";
-import { useContactsContext } from ".";
+import { useContactsContext, useSocketContext } from ".";
 
 const conversationContext = createContext();
 
@@ -12,6 +18,8 @@ export const ConversationContextProvider = ({ children, id }) => {
   const [selectedConversationIndex, setSelectedConversationIndex] = useState(0);
 
   const { contacts } = useContactsContext();
+  const { socket } = useSocketContext();
+
   const createNewConversation = (recipients) => {
     setConversations((previousConversations) => [
       ...previousConversations,
@@ -19,35 +27,38 @@ export const ConversationContextProvider = ({ children, id }) => {
     ]);
   };
 
-  const addMessageToConversation = ({ recipients, text, sender }) => {
-    const newMessage = { text, sender };
-    setConversations((previousConversations) => {
-      let madeChanges = false;
-      const newConversations = previousConversations.map((conversation) => {
-        if (arrayEquality(conversation.recipients, recipients)) {
-          madeChanges = true;
-          return {
-            ...conversation,
-            messages: [...conversation.messages, newMessage],
-          };
+  const addMessageToConversation = useCallback(
+    ({ recipients, text, sender }) => {
+      const newMessage = { text, sender };
+      setConversations((previousConversations) => {
+        let madeChanges = false;
+        const newConversations = previousConversations.map((conversation) => {
+          if (arrayEquality(conversation.recipients, recipients)) {
+            madeChanges = true;
+            return {
+              ...conversation,
+              messages: [...conversation.messages, newMessage],
+            };
+          }
+          return conversation;
+        });
+        if (!madeChanges) {
+          return [
+            ...previousConversations,
+            { recipients: recipients, messages: [newMessage] },
+          ];
         }
-        return conversation;
+        return newConversations;
       });
-      if (!madeChanges) {
-        return [
-          ...previousConversations,
-          { recipients: recipients, messages: [newMessage] },
-        ];
-      }
-      return newConversations;
-    });
-  };
+    },
+    [setConversations]
+  );
 
   const sendMessage = (recipients, text) => {
+    socket.emit("send-message", { recipients, text });
     addMessageToConversation({ recipients, text, sender: id });
   };
 
-  console.log(contacts);
   const formattedConversations = conversations.map((conversation, index) => {
     const recipients = conversation.recipients.map((recipient) => {
       const contact = contacts.find((cont) => cont.id === recipient);
@@ -56,7 +67,7 @@ export const ConversationContextProvider = ({ children, id }) => {
     });
     const messages = conversation.messages.map((message) => {
       const contact = contacts.find((cont) => cont.id === message.sender);
-  
+
       const name = (contact && contact.name) || message.sender;
       const fromMe = message.sender === id;
       return { ...message, senderName: name, fromMe };
@@ -64,6 +75,14 @@ export const ConversationContextProvider = ({ children, id }) => {
     const selected = selectedConversationIndex === index;
     return { ...conversation, recipients, selected, messages };
   });
+
+  useEffect(() => {
+    if (socket === null) {
+      return;
+    }
+    socket.on("receive-message", addMessageToConversation);
+    return () => socket.off("receive-message");
+  }, [socket, addMessageToConversation]);
 
   return (
     <conversationContext.Provider
